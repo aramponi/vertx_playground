@@ -6,6 +6,7 @@ import org.vertx.java.core.Handler;
 import org.vertx.java.core.MultiMap;
 import org.vertx.java.core.eventbus.EventBus;
 import org.vertx.java.core.eventbus.Message;
+import org.vertx.java.core.eventbus.ReplyException;
 import org.vertx.java.core.http.HttpServerRequest;
 import org.vertx.java.core.http.RouteMatcher;
 import org.vertx.java.core.json.JsonObject;
@@ -40,17 +41,21 @@ public class MppVerticle extends Verticle {
             @Override
             public void handle(final HttpServerRequest req) {
                 MultiMap params = req.params();
-                String url = "DefaultUrl";
-                if (params.contains("url")) {
-                    url = params.get("url");
-                }
-                vertx.eventBus().sendWithTimeout(MPP_MESSAGE_HANDLER, url, 60000, new Handler<AsyncResult<Message<String>>>() {
+                final String url = params.contains("url") ?  params.get("url") : "DefaultUrl";
+
+                vertx.eventBus().sendWithTimeout(MPP_MESSAGE_HANDLER, url, 500, new Handler<AsyncResult<Message<String>>>() {
 
                     public void handle(AsyncResult<Message<String>> result) {
                         if (result.succeeded()) {
                             req.response().setStatusCode(200);
                             req.response().putHeader("Content-Type", "application/json");
                             req.response().end(result.result().body());
+                        }  else {
+                            ReplyException ex = (ReplyException)result.cause();
+                            System.err.println("Failure type: " + ex.failureType());
+                            System.err.println("Failure code: " + ex.failureCode());
+                            System.err.println("Failure message: " + ex.getMessage());
+                            vertx.eventBus().sendWithTimeout(MPP_MESSAGE_HANDLER, url, 500, this);
                         }
                     }
 
@@ -68,7 +73,7 @@ public class MppVerticle extends Verticle {
         });
 
 
-        vertx.createHttpServer().requestHandler(matcher).listen(8888);
+        vertx.createHttpServer().requestHandler(matcher).listen(7890);
 
 
         container.logger().info("Webserver started, listening on port: 8888");

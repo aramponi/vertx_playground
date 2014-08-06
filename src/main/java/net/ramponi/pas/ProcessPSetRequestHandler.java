@@ -18,6 +18,7 @@ public class ProcessPSetRequestHandler implements Handler<Message<String>> {
     final UUID uuid;
     public ProcessPSetRequestHandler() {
         uuid = UUID.randomUUID();
+        System.out.println(uuid);
     }
     @Override
     public void handle(Message<String> message) {
